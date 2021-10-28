@@ -1,0 +1,7 @@
+C:\Users\gazto\source\repos\csppg\csppg\bin\Debug\csppg.exe.config
+C:\Users\gazto\source\repos\csppg\csppg\bin\Debug\csppg.exe
+C:\Users\gazto\source\repos\csppg\csppg\bin\Debug\csppg.pdb
+C:\Users\gazto\source\repos\csppg\csppg\obj\Debug\csppg.csproj.AssemblyReference.cache
+C:\Users\gazto\source\repos\csppg\csppg\obj\Debug\csppg.csproj.CoreCompileInputs.cache
+C:\Users\gazto\source\repos\csppg\csppg\obj\Debug\csppg.exe
+C:\Users\gazto\source\repos\csppg\csppg\obj\Debug\csppg.pdb

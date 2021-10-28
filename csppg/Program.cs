@@ -42,7 +42,7 @@ namespace csppg
 				{
 					result = -1;
 					_PrintUsage(Console.Error);
-					
+
 				}
 				else if (args[0].StartsWith("/"))
 				{
@@ -84,40 +84,42 @@ namespace csppg
 								throw new ArgumentException(string.Format("Unknown switch {0}", args[i]));
 						}
 					}
-				}
-				if (string.IsNullOrWhiteSpace(inputfile))
-					throw new ArgumentException("inputfile");
-				var cwd = Environment.CurrentDirectory;
-				if (!ifstale || _IsStale(inputfile, outputfile))
-				{
-					if (null != outputfile)
+
+
+					if (string.IsNullOrWhiteSpace(inputfile))
+						throw new ArgumentException("inputfile");
+					var cwd = Environment.CurrentDirectory;
+					if (!ifstale || _IsStale(inputfile, outputfile))
 					{
-						Console.Error.WriteLine("{0} is building file: {1}", Name, outputfile);
-						cwd = Path.GetDirectoryName(outputfile);
-						output = new StreamWriter(outputfile);
+						if (null != outputfile)
+						{
+							Console.Error.WriteLine("{0} is building file: {1}", Name, outputfile);
+							cwd = Path.GetDirectoryName(outputfile);
+							output = new StreamWriter(outputfile);
+						}
+						else
+						{
+							Console.Error.WriteLine("{0} is building preprocessor.", Name);
+							output = Console.Out;
+						}
+						if (string.IsNullOrEmpty(codeclass))
+						{
+							// default we want it to be named after the code file
+							// otherwise we'll use inputfile
+							if (null != outputfile)
+								codeclass = Path.GetFileNameWithoutExtension(outputfile);
+							else
+								codeclass = Path.GetFileNameWithoutExtension(inputfile);
+						}
+						input = new StreamReader(inputfile);
+						Preprocessor.Run(input, output, null, codeclass, codenamespace, null, true, @internal);
 					}
 					else
 					{
-						Console.Error.WriteLine("{0} is building preprocessor.", Name);
-						output = Console.Out;
+						stderr.WriteLine("{0} skipped building of {1} because it was not stale.", Name, outputfile);
 					}
-					if (string.IsNullOrEmpty(codeclass))
-					{
-						// default we want it to be named after the code file
-						// otherwise we'll use inputfile
-						if (null != outputfile)
-							codeclass = Path.GetFileNameWithoutExtension(outputfile);
-						else
-							codeclass = Path.GetFileNameWithoutExtension(inputfile);
-					}
-					input = new StreamReader(inputfile);
-					Preprocessor.Run(input, output, null, codeclass, codenamespace, null, true, @internal);
-				} else
-                {
-					stderr.WriteLine("{0} skipped building of {1} because it was not stale.", Name, outputfile);
-                }
 
-
+				}
 			}
 			// we don't like to catch in debug mode
 #if !DEBUG
