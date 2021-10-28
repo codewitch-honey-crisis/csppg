@@ -41,7 +41,7 @@ namespace csppg
 				if (0 == args.Length)
 				{
 					result = -1;
-					_PrintUsage(Console.Error);
+					_PrintUsage(stderr);
 
 				}
 				else if (args[0].StartsWith("/"))
@@ -93,14 +93,14 @@ namespace csppg
 					{
 						if (null != outputfile)
 						{
-							Console.Error.WriteLine("{0} is building file: {1}", Name, outputfile);
+							stderr.WriteLine("{0} is building file: {1}", Name, outputfile);
 							cwd = Path.GetDirectoryName(outputfile);
 							output = new StreamWriter(outputfile);
 						}
 						else
 						{
-							Console.Error.WriteLine("{0} is building preprocessor.", Name);
-							output = Console.Out;
+							stderr.WriteLine("{0} is building preprocessor.", Name);
+							output = stdout;
 						}
 						if (string.IsNullOrEmpty(codeclass))
 						{
@@ -157,7 +157,7 @@ namespace csppg
 			}
 			else
 			{
-				w.WriteLine("<No description>");
+				w.WriteLine(" - <No description>");
 			}
 			w.WriteLine();
 			w.WriteLine("   <inputfile>     The input template");
