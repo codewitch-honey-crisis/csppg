@@ -1,9 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <StartArguments>..\..\%2a.template /internal /output Test%2a.cs /class Foo /method %2aRun</StartArguments>
+    <StartArguments>..\..\test.template /output ..\..\testGenerator.cs /class testGenerator /namespace Testing /internal</StartArguments>
   </PropertyGroup>
   <PropertyGroup>
     <ProjectView>ShowAllFiles</ProjectView>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <StartArguments>..\..\test.template" /output "testGenerator.cs" /class StartGenerator /namespace Reggie /internal</StartArguments>
   </PropertyGroup>
 </Project>

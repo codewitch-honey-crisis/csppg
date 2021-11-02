@@ -15,7 +15,7 @@ namespace csppg
 			if (string.IsNullOrWhiteSpace(codeclass))
 				codeclass = "Preprocessor";
 			if (string.IsNullOrWhiteSpace(codemethod))
-				codeclass = "Run";
+				codemethod = "Run";
 			if (string.IsNullOrWhiteSpace(codenamespace))
 				codenamespace = null;
 			var frameworkPath = RuntimeEnvironment.GetRuntimeDirectory();
