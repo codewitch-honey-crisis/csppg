@@ -30,6 +30,7 @@ namespace csppg
 			bool @internal = false;
 			string outputfile=null;
 			string codeclass = null;
+			string codemethod = null;
 			string codenamespace=null;
 			bool ifstale = false;
 			// our working variables
@@ -62,7 +63,13 @@ namespace csppg
 								++i; // advance 
 								outputfile = args[i];
 								break;
-							case "/class":
+						case "/method":
+							if (args.Length - 1 == i) // check if we're at the end
+								throw new ArgumentException(string.Format("The parameter \"{0}\" is missing an argument", args[i].Substring(1)));
+							++i; // advance 
+							codemethod = args[i];
+							break;
+						case "/class":
 								if (args.Length - 1 == i) // check if we're at the end
 									throw new ArgumentException(string.Format("The parameter \"{0}\" is missing an argument", args[i].Substring(1)));
 								++i; // advance 
@@ -89,34 +96,58 @@ namespace csppg
 					if (string.IsNullOrWhiteSpace(inputfile))
 						throw new ArgumentException("inputfile");
 					var cwd = Environment.CurrentDirectory;
-					if (!ifstale || _IsStale(inputfile, outputfile))
-					{
-						if (null != outputfile)
-						{
-							stderr.WriteLine("{0} is building file: {1}", Name, outputfile);
-							cwd = Path.GetDirectoryName(outputfile);
-							output = new StreamWriter(outputfile);
+					var iSearch = (string.IsNullOrWhiteSpace(outputfile)||!outputfile.Contains("*"))?-1:inputfile.IndexOfAny(new char[] { '*', '?' });
+					string srch = null;
+					var repl = outputfile;
+					if(iSearch>-1) {
+						var li = inputfile.LastIndexOfAny(new char[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+						if (li > iSearch) throw new ArgumentException("<inputfile> cannot use a directory search. is your path valid?"); 
+						if(li>-1) {
+							srch = inputfile.Substring(li + 1);
+							inputfile = inputfile.Substring(0, li);
+                        } else {
+							srch = inputfile;
+							inputfile = cwd;
+							
+                        }
+                    }
+					foreach (var ifile in (-1 < iSearch) ? Directory.GetFiles(inputfile, srch) : new string[] { inputfile }) {
+						if(-1<iSearch) {
+							outputfile = Path.Combine(inputfile,repl.Replace("*", Path.GetFileNameWithoutExtension(Path.GetFileName(ifile))));
+                        }
+						if (!ifstale || _IsStale(ifile, outputfile)) {
+							if (null != outputfile) {
+								stderr.WriteLine("{0} is building file: {1}", Name, outputfile);
+								cwd = Path.GetDirectoryName(outputfile);
+								output = new StreamWriter(outputfile);
+							} else {
+								stderr.WriteLine("{0} is building preprocessor.", Name);
+								output = stdout;
+							}
+							var cls = codeclass;
+							if (string.IsNullOrEmpty(cls)) {
+								// default we want it to be named after the code file
+								// otherwise we'll use inputfile
+								if (null != outputfile)
+									cls= Path.GetFileNameWithoutExtension(outputfile);
+								else if(0>iSearch)
+									cls = Path.GetFileNameWithoutExtension(ifile);
+							} else {
+								if (-1<iSearch && cls.Contains("*")) {
+									cls = cls.Replace("*", Path.GetFileNameWithoutExtension(Path.GetFileName(ifile)));
+                                }
+                            }
+							var mth = codemethod;
+							if(!string.IsNullOrEmpty(mth)) {
+								if(-1<iSearch && !string.IsNullOrEmpty(codeclass)) {
+									mth= mth.Replace("*", Path.GetFileNameWithoutExtension(Path.GetFileName(ifile)));
+								}
+                            }
+							input = new StreamReader(ifile);
+							Preprocessor.Run(input, output, null, mth,cls, codenamespace, null, true, @internal);
+						} else {
+							stderr.WriteLine("{0} skipped building of {1} because it was not stale.", Name, outputfile);
 						}
-						else
-						{
-							stderr.WriteLine("{0} is building preprocessor.", Name);
-							output = stdout;
-						}
-						if (string.IsNullOrEmpty(codeclass))
-						{
-							// default we want it to be named after the code file
-							// otherwise we'll use inputfile
-							if (null != outputfile)
-								codeclass = Path.GetFileNameWithoutExtension(outputfile);
-							else
-								codeclass = Path.GetFileNameWithoutExtension(inputfile);
-						}
-						input = new StreamReader(inputfile);
-						Preprocessor.Run(input, output, null, codeclass, codenamespace, null, true, @internal);
-					}
-					else
-					{
-						stderr.WriteLine("{0} skipped building of {1} because it was not stale.", Name, outputfile);
 					}
 
 				}
@@ -162,6 +193,7 @@ namespace csppg
 			w.WriteLine();
 			w.WriteLine("   <inputfile>     The input template");
 			w.WriteLine("   <outputfile>    The preprocessor source file - defaults to STDOUT");
+			w.WriteLine("   <codemethod>    The name of the method to generate - defaults to Run");
 			w.WriteLine("   <codeclass>     The name of the main class to generate - default derived from <outputfile>");
 			w.WriteLine("   <codenamespace> The namespace to generate the code under - defaults to none");
 			w.WriteLine("   <internal>      Mark the generated class as internal - defaults to public");

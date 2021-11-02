@@ -10,10 +10,12 @@ namespace csppg
 {
     class Preprocessor
     {
-		public static void Run(TextReader input, TextWriter output, IDictionary<string, object> args = null, string codeclass="Preprocessor", string codenamespace=null, TextReader codebehind = null, bool generatePreprocessor=false,bool @internal = false)
+		public static void Run(TextReader input, TextWriter output, IDictionary<string, object> args = null, string codemethod = "Run", string codeclass="Preprocessor", string codenamespace=null, TextReader codebehind = null, bool generatePreprocessor=false,bool @internal = false)
         {
 			if (string.IsNullOrWhiteSpace(codeclass))
 				codeclass = "Preprocessor";
+			if (string.IsNullOrWhiteSpace(codemethod))
+				codeclass = "Run";
 			if (string.IsNullOrWhiteSpace(codenamespace))
 				codenamespace = null;
 			var frameworkPath = RuntimeEnvironment.GetRuntimeDirectory();
@@ -52,7 +54,8 @@ namespace csppg
 			sw.Write("{0}{2} partial class {1} ",codenamespace!=null?"    ":"", codeclass,@internal && generatePreprocessor?"internal":"public");
 			sw.WriteLine("{");
 			if (codenamespace != null) sw.Write("    ");
-			sw.WriteLine("    public static void Run(TextWriter Response, IDictionary<string, object> Arguments) {");
+			sw.Write("    public static void {0}(TextWriter Response, IDictionary<string, object> Arguments) ",codemethod);
+			sw.WriteLine("{");
 			int cur;
 			var more = true;
 			var cch = '\0'; 
@@ -171,7 +174,7 @@ namespace csppg
 					var s = codeclass;
 					if (codenamespace != null) s = codenamespace + "." + codeclass;
 					var t = asm.GetType(s);
-					var m = t.GetMethod("Run");
+					var m = t.GetMethod(codemethod);
 					if (null != m)
 					{
 						try
@@ -214,6 +217,7 @@ namespace csppg
 						return sb.ToString();
 					}
 					sb.Append('<');
+					continue;
 				}
 				else if (-1 == cur)
 				{

@@ -1,0 +1,17 @@
+﻿<%
+var rules = (IList<LexRule>)Arguments["rules"];
+var ignoreCase = (bool)Arguments["ignorecase"];
+var inputFile = (string)Arguments["inputfile"];
+var outputFile = (string)Arguments["outputfile"];
+var stderr = (TextWriter)Arguments["stderr"];
+var dot = (bool)Arguments["dot"];
+var jpg = (bool)Arguments["jpg"];
+var cwd = Path.GetDirectoryName(outputFile!=null?outputFile:inputFile);
+var blockEnds = BuildBlockEnds(rules,inputFile,ignoreCase);
+%>
+TRUNCATE TABLE [dbo].[<%=codeclass%>SymbolData]
+TRUNCATE TABLE [dbo].[<%=codeclass%>StateTransition]
+TRUNCATE TABLE [dbo].[<%=codeclass%>State]
+GO<%
+Run("SqlTableMatcherFillerGenerator",arguments,Response);
+%>
