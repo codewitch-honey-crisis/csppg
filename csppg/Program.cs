@@ -113,7 +113,7 @@ namespace csppg
                     }
 					foreach (var ifile in (-1 < iSearch) ? Directory.GetFiles(inputfile, srch) : new string[] { inputfile }) {
 						if(-1<iSearch) {
-							outputfile = Path.Combine(inputfile,repl.Replace("*", Path.GetFileNameWithoutExtension(Path.GetFileName(ifile))));
+							outputfile = repl.Replace("*", Path.GetFileNameWithoutExtension(Path.GetFileName(ifile)));
                         }
 						if (!ifstale || _IsStale(ifile, outputfile)) {
 							if (null != outputfile) {
