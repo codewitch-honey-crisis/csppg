@@ -1,17 +1,33 @@
-﻿<%
-var rules = (IList<LexRule>)Arguments["rules"];
-var ignoreCase = (bool)Arguments["ignorecase"];
-var inputFile = (string)Arguments["inputfile"];
-var outputFile = (string)Arguments["outputfile"];
-var stderr = (TextWriter)Arguments["stderr"];
-var dot = (bool)Arguments["dot"];
-var jpg = (bool)Arguments["jpg"];
-var cwd = Path.GetDirectoryName(outputFile!=null?outputFile:inputFile);
-var blockEnds = BuildBlockEnds(rules,inputFile,ignoreCase);
-%>
-TRUNCATE TABLE [dbo].[<%=codeclass%>SymbolData]
-TRUNCATE TABLE [dbo].[<%=codeclass%>StateTransition]
-TRUNCATE TABLE [dbo].[<%=codeclass%>State]
-GO<%
-Run("SqlTableMatcherFillerGenerator",arguments,Response);
-%>
+﻿// reads the next UTF32 codepoint off an enumerator
+const string _UnicodeSurrogateError = "Invalid surrogate found in Unicode stream";
+static int _ReadUtf32(System.Collections.Generic.IEnumerator<char> cursor, out int adv) {
+    adv = 0;
+    if(!cursor.MoveNext()) return -1;
+    ++adv;
+    var chh = cursor.Current;
+    int result = chh;
+    if(char.IsHighSurrogate(chh)) {
+        if(!cursor.MoveNext()) throw new System.IO.IOException(_UnicodeSurrogateError);
+        ++adv;
+        var chl = cursor.Current;
+        if(!char.IsLowSurrogate(chl)) throw new System.IO.IOException(_UnicodeSurrogateError);
+        result = char.ConvertToUtf32(chh,chl);
+    }
+    return result;
+}
+// reads the next UTF32 codepoint off a text reader
+static int _ReadUtf32(System.IO.TextReader reader, out int adv) {
+    adv=0;
+    var result = reader.Read();
+    if (-1 != result) {
+        ++adv;
+        if (char.IsHighSurrogate(unchecked((char)result))) {
+            var chl = reader.Read();
+            if (-1 == chl) throw new System.IO.IOException(_UnicodeSurrogateError);
+            ++adv;
+            if (!char.IsLowSurrogate(unchecked((char)chl))) throw new System.IO.IOException(_UnicodeSurrogateError);
+            result = char.ConvertToUtf32(unchecked((char)result), unchecked((char)chl));
+        }
+    }
+    return result;
+}

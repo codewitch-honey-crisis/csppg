@@ -19,18 +19,20 @@ namespace csppg
 				codemethod = "Run";
 			if (string.IsNullOrWhiteSpace(codenamespace))
 				codenamespace = null;
-			var frameworkPath = RuntimeEnvironment.GetRuntimeDirectory();
-			var cwd = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-			try
-			{
-				Directory.CreateDirectory(Path.Combine(cwd, "temp"));
-			}
-			catch
-            {
-
-            }
+			string frameworkPath = null;
+			string cwd = null; 
 			if (!generatePreprocessor)
 			{
+				cwd = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+				frameworkPath = RuntimeEnvironment.GetRuntimeDirectory();
+
+				try {
+					Directory.CreateDirectory(Path.Combine(cwd, "temp"));
+				}
+				catch {
+
+				}
+
 				cwd = Path.Combine(cwd, "temp");
 				foreach (var file in Directory.GetFiles(cwd))
 				{
@@ -109,12 +111,24 @@ namespace csppg
 						_EnsureDirectives(dirs,sw,preamble,extraParams);
 					hasParsedDirectives = true;
 					_GenerateResponseText(startText.ToString(), codenamespace, sw) ;
+					startText.Clear();
 					if(null!=afterFinalDir) {
 						_GenerateResponseText(afterFinalDir, codenamespace, sw);
+						afterFinalDir = null;
 					}
 					sw.WriteLine(_ReadUntilEndContext(cur, input, cch));
 				}
 	
+			}
+			if(!hasParsedDirectives) {
+				_EnsureDirectives(dirs, sw, preamble, extraParams);
+				hasParsedDirectives = true;
+			}
+			_GenerateResponseText(startText.ToString(), codenamespace, sw);
+			startText.Clear();
+			if (null != afterFinalDir) {
+				_GenerateResponseText(afterFinalDir, codenamespace, sw);
+				afterFinalDir = null;
 			}
 			if (codenamespace != null) sw.Write("    ");
 			sw.WriteLine("        Response.Flush();");
@@ -218,7 +232,9 @@ namespace csppg
 				}
 				catch { }
 			} else {
+				sw.Flush();
 				output.Write(sb.ToString());
+				output.Flush();
             }
 			
 		}

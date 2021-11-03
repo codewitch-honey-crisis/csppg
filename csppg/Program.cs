@@ -145,6 +145,10 @@ namespace csppg
                             }
 							input = new StreamReader(ifile);
 							Preprocessor.Run(input, output, null, mth,cls, codenamespace, null, true, @internal);
+							output.Flush();
+							if (outputfile!=null) {
+								output.Close();
+                            }
 						} else {
 							stderr.WriteLine("{0} skipped building of {1} because it was not stale.", Name, outputfile);
 						}
