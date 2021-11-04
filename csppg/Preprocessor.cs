@@ -24,8 +24,8 @@ namespace csppg
 			if (!generatePreprocessor)
 			{
 				cwd = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-				frameworkPath = RuntimeEnvironment.GetRuntimeDirectory();
-
+					frameworkPath = RuntimeEnvironment.GetRuntimeDirectory();
+					
 				try {
 					Directory.CreateDirectory(Path.Combine(cwd, "temp"));
 				}
@@ -93,7 +93,14 @@ namespace csppg
 					if (!hasParsedDirectives)
 						_EnsureDirectives(dirs, sw, preamble, extraParams);
 					hasParsedDirectives = true;
-
+					if (startText.Length > 0) {
+						_GenerateResponseText(startText.ToString(), codenamespace, sw);
+						startText.Clear();
+					}
+					if (null != afterFinalDir) {
+						_GenerateResponseText(afterFinalDir, codenamespace, sw);
+						afterFinalDir = null;
+					}
 					if (codenamespace != null) sw.Write("    ");
 					sw.Write("        Response.Write(");
 					sw.Write(_ReadUntilEndContext(-1, input, cch));
