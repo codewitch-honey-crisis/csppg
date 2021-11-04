@@ -74,13 +74,14 @@ namespace csppg
 				var text = _ReadUntilStartContext(input,out ccch);
 				
 				if (cch == 0) cch = ccch; else if (ccch != cch && 0!=ccch) throw new InvalidOperationException("Invalid mixing and matching of context switches");
+				if(!hasParsedDirectives&&dirs.Count>0 && trailingDir)
+					afterFinalDir = text;
 				if (0 < text.Length)
 				{
 					if (!hasParsedDirectives) {
 						if (dirs.Count == 0) {
 							startText.Append(text);
-						} else if (trailingDir)
-							afterFinalDir = text;
+						} 
 					} else if(hasParsedDirectives){
 						_GenerateResponseText(text, codenamespace, sw);
                     }

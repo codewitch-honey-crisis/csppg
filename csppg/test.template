@@ -1,1 +1,14 @@
-﻿<%@param name="text" type="string"%>// <%=text%>
+﻿<%@param name="docTemplate" type="string"%>
+<%@param name="@private" type="bool"%>
+<%@param name="returnTemplate" type="string"%>
+<%@param name="methodName" type="string"%>
+<%@param name="parametersTemplate" type="string"%><%
+dynamic a = Arguments;
+var indentPart = "    ";
+string indent;
+if(""!=(string)a.@namespace) {
+	indent = indentPart + indentPart;
+} else {
+	indent = indentPart;
+}
+Generate(docTemplate,Arguments,Response,(""!=(string)a.@namespace)?2:1);%><%=indent%><%=!@private?"public ":""%><%Generate(returnTemplate,Arguments,Response);%> <%=methodName%>(<%Generate(parametersTemplate,Arguments,Response);%>) {
