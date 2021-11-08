@@ -11,8 +11,13 @@ namespace csppg
     class Preprocessor
     {
 
-		public static void Run(TextReader input, TextWriter output, IDictionary<string, object> args = null, string codemethod = "Run", string codeclass="Preprocessor", string codenamespace=null, TextReader codebehind = null, bool generatePreprocessor=false,bool @internal = false)
+		public static void Run(string filename, TextReader input, TextWriter output, IDictionary<string, object> args = null, string codemethod = "Run", string codeclass="Preprocessor", string codenamespace=null, TextReader codebehind = null, bool generatePreprocessor=false,bool @internal = false)
         {
+			var inp = new LineCountingTextReader(input);
+			var pragmas = string.IsNullOrEmpty(filename) ? false : true;
+			if (pragmas) filename = Path.GetFullPath(filename);
+			var pragmaLine = 1;
+
 			if (string.IsNullOrWhiteSpace(codeclass))
 				codeclass = "Preprocessor";
 			if (string.IsNullOrWhiteSpace(codemethod))
@@ -45,7 +50,9 @@ namespace csppg
 			}
 			var sb = new StringBuilder();
 			var sw = new StringWriter(sb);
-			
+			if(pragmas) {
+				sw.WriteLine("#line hidden");
+            }
 			if(codenamespace!=null)
             {
 				sw.Write("namespace {0} ", codenamespace);
@@ -64,30 +71,39 @@ namespace csppg
 			var more = true;
 			var cch = '\0';
 			var startText = new StringBuilder();
+			int startTextLine=1;
 			var trailingDir = false;
+			int afterFinalDirLine=1;
 			var extraParams = new Dictionary<string, string>();
 			var dirs = new List<IDictionary<string, string>>();
 			string afterFinalDir = null;
 			while (more)
 			{
 				char ccch;
-				var text = _ReadUntilStartContext(input,out ccch);
-				
-				if (cch == 0) cch = ccch; else if (ccch != cch && 0!=ccch) throw new InvalidOperationException("Invalid mixing and matching of context switches");
-				if(!hasParsedDirectives&&dirs.Count>0 && trailingDir)
+				pragmaLine = inp.Line;
+				var text = _ReadUntilStartContext(inp,out ccch);
+				if (cch == 0) cch = ccch; else if (ccch != cch && 0!=ccch) throw new InvalidOperationException("Invalid mixing and matching of context switches" + (string.IsNullOrEmpty(filename)?"":(" in "+filename)));
+				if (!hasParsedDirectives && dirs.Count > 0 && trailingDir) {
 					afterFinalDir = text;
+					afterFinalDirLine = pragmaLine;
+				}
 				if (0 < text.Length)
 				{
 					if (!hasParsedDirectives) {
 						if (dirs.Count == 0) {
+							if(startText.Length==0) {
+								startTextLine = pragmaLine;
+                            }
 							startText.Append(text);
 						} 
-					} else if(hasParsedDirectives){
+					} else if(hasParsedDirectives && text.Length>0){
+						_GenerateLinePragma(filename, pragmaLine, codenamespace, sw);
 						_GenerateResponseText(text, codenamespace, sw);
                     }
 				}
 				trailingDir = false;
-				cur = input.Read();
+				pragmaLine = inp.Line;
+				cur = inp.Read();
 				if (-1 == cur)
 					more = false;
 				else if ('=' == cur) {
@@ -95,36 +111,56 @@ namespace csppg
 						_EnsureDirectives(dirs, sw, preamble, extraParams);
 					hasParsedDirectives = true;
 					if (startText.Length > 0) {
+						_GenerateLinePragma(filename, startTextLine, codenamespace, sw);
 						_GenerateResponseText(startText.ToString(), codenamespace, sw);
 						startText.Clear();
 					}
-					if (null != afterFinalDir) {
+					if (null != afterFinalDir && afterFinalDir.Length>0) {
+						_GenerateLinePragma(filename, pragmaLine, codenamespace, sw);
 						_GenerateResponseText(afterFinalDir, codenamespace, sw);
-						afterFinalDir = null;
+						pragmaLine += _CountLines(afterFinalDir);
 					}
-					if (codenamespace != null) sw.Write("    ");
-					sw.Write("        Response.Write(");
-					sw.Write(_ReadUntilEndContext(-1, input, cch));
-					sw.WriteLine(");");
+					afterFinalDir = null;
+					pragmaLine = inp.Line;
+					var s = _ReadUntilEndContext(-1, inp, cch);
+					if (s.Length > 0) {
+						_GenerateLinePragma(filename, pragmaLine, codenamespace, sw);
+						if (codenamespace != null) sw.Write("    ");
+						sw.Write("        Response.Write(");
+
+						sw.Write(s);
+
+						sw.WriteLine(");");
+					}
 				} else if ('@' == cur) {
 					if(hasParsedDirectives) {
-						throw new Exception("Directives must be placed before other content");
+						throw new Exception("Directives must be placed before other content" + (string.IsNullOrEmpty(filename) ? "" : (" in " + filename)));
                     }
-					var dirtext=_ReadUntilEndContext(-1, input, cch);
-					var dir= _ParseDirective(dirtext);
+					pragmaLine = inp.Line;
+					var dirtext=_ReadUntilEndContext(-1, inp, cch);
+					var dir= _ParseDirective(filename,dirtext);
 					dirs.Add(dir);
 					trailingDir = true; 
 				} else {
 					if(!hasParsedDirectives)
 						_EnsureDirectives(dirs,sw,preamble,extraParams);
 					hasParsedDirectives = true;
-					_GenerateResponseText(startText.ToString(), codenamespace, sw) ;
+					if (startText.Length > 0) {
+						_GenerateLinePragma(filename, pragmaLine, codenamespace, sw);
+						_GenerateResponseText(startText.ToString(), codenamespace, sw);
+					}
 					startText.Clear();
-					if(null!=afterFinalDir) {
+					if(null!=afterFinalDir && !string.IsNullOrEmpty(afterFinalDir)) {
+						_GenerateLinePragma(filename, afterFinalDirLine, codenamespace, sw);
 						_GenerateResponseText(afterFinalDir, codenamespace, sw);
 						afterFinalDir = null;
 					}
-					sw.WriteLine(_ReadUntilEndContext(cur, input, cch));
+					pragmaLine = inp.Line;
+					var s = _ReadUntilEndContext(cur, inp, cch);
+					if (s.Length > 0) {
+						_GenerateLinePragma(filename, pragmaLine, codenamespace, sw);
+						sw.WriteLine(s);
+					}
 				}
 	
 			}
@@ -132,9 +168,13 @@ namespace csppg
 				_EnsureDirectives(dirs, sw, preamble, extraParams);
 				hasParsedDirectives = true;
 			}
-			_GenerateResponseText(startText.ToString(), codenamespace, sw);
+			if (startText.Length > 0) {
+				_GenerateLinePragma(filename, startTextLine, codenamespace, sw);
+				_GenerateResponseText(startText.ToString(), codenamespace, sw);
+			}
 			startText.Clear();
 			if (null != afterFinalDir) {
+				_GenerateLinePragma(filename, afterFinalDirLine, codenamespace, sw);
 				_GenerateResponseText(afterFinalDir, codenamespace, sw);
 				afterFinalDir = null;
 			}
@@ -246,7 +286,15 @@ namespace csppg
             }
 			
 		}
-		static IDictionary<string,string> _ParseDirective(string dirtext) {
+		static int _CountLines(string text) {
+			var result = 0;
+			for(var i = 0;i<text.Length;++i) {
+				if (text[i] == '\n')
+					++result;
+            }
+			return result;
+        }
+		static IDictionary<string,string> _ParseDirective(string filename, string dirtext) {
 			var result = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
 			var pos = 0;
 			var sb = new StringBuilder();
@@ -263,7 +311,7 @@ namespace csppg
 					result.Add(attrName, "");
                 } else {
 					if(ch!=' ' && ch!='\t' && ch!='=' && !char.IsLetterOrDigit(ch)) {
-						throw new Exception("Invalid characters found in directive attribute name");
+						throw new Exception("Invalid characters found in directive attribute name" + (string.IsNullOrEmpty(filename) ? "" : (" in " + filename)));
                     }
 					while (pos < dirtext.Length && (ch == ' ' || ch == '\t')) {
 						ch = dirtext[++pos];
@@ -273,23 +321,23 @@ namespace csppg
 					} else {
 						if (ch == '=') {
 							if (pos == dirtext.Length)
-								throw new Exception("Missing attribute value in directive");
+								throw new Exception("Missing attribute value in directive" + (string.IsNullOrEmpty(filename) ? "" : (" in " + filename)));
 							ch = dirtext[++pos];
 							while (pos < dirtext.Length && (ch == ' ' || ch == '\t')) {
 								ch = dirtext[++pos];
 							}
-							if (pos == dirtext.Length) throw new Exception("Missing attribute value in directive");
+							if (pos == dirtext.Length) throw new Exception("Missing attribute value in directive" + (string.IsNullOrEmpty(filename) ? "" : (" in " + filename)));
 							if (ch == '\"') {
 								++pos;
 								if (pos >= dirtext.Length)
-									throw new Exception("Unterminated quote in directive value in directive");
+									throw new Exception("Unterminated quote in directive value in directive" + (string.IsNullOrEmpty(filename) ? "" : (" in " + filename)));
 								ch = dirtext[pos];
 								ch = dirtext[pos];
 								while (pos < dirtext.Length && ch != '\"') {
 									sb.Append(ch);
 									ch = dirtext[++pos];
 								}
-								if (pos >= dirtext.Length) throw new Exception("Unterminated quote in directive value");
+								if (pos >= dirtext.Length) throw new Exception("Unterminated quote in directive value" + (string.IsNullOrEmpty(filename) ? "" : (" in " + filename)));
 								++pos; // adv past the quote;
 								if (pos < dirtext.Length)
 									ch = dirtext[pos];
@@ -315,6 +363,12 @@ namespace csppg
 			} 
 			return result;
         }
+		static void _GenerateLinePragma(string filename,int pragmaLine, string codenamespace,TextWriter sw) {
+			if (!string.IsNullOrEmpty(filename)) {
+				if (codenamespace != null) sw.Write("    ");
+				sw.WriteLine("        #line {0} \"{1}\"",pragmaLine,filename.Replace("\"","\"\""));
+			}
+		}
 		static void _GenerateResponseText(string text,string codenamespace,TextWriter sw) {
 			if (text != null) {
 				var srl = new StringReader(text);

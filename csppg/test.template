@@ -11,4 +11,6 @@ if(""!=(string)a.@namespace) {
 } else {
 	indent = indentPart;
 }
-Generate(docTemplate,Arguments,Response,(""!=(string)a.@namespace)?2:1);%><%=indent%><%=!@private?"public ":""%><%Generate(returnTemplate,Arguments,Response);%> <%=methodName%>(<%Generate(parametersTemplate,Arguments,Response);%>) {
+Generate(docTemplate,Arguments,Response,(""!=(string)a.@namespace)?2:1);%><%=indent%><%=!@private?"public ":""%><%
+Generate(returnTemplate,Arguments,Response);%> <%=methodName%>(<%
+Generate(parametersTemplate,Arguments,Response);%>) {

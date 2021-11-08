@@ -144,7 +144,7 @@ namespace csppg
 								}
                             }
 							input = new StreamReader(ifile);
-							Preprocessor.Run(input, output, null, mth,cls, codenamespace, null, true, @internal);
+							Preprocessor.Run(ifile,input, output, null, mth,cls, codenamespace, null, true, @internal);
 							output.Flush();
 							if (outputfile!=null) {
 								output.Close();
